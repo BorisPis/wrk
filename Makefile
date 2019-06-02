@@ -41,7 +41,7 @@ endif
 
 ifneq ($(WITH_OPENSSL),)
 	CFLAGS  += -I$(WITH_OPENSSL)/include
-	LDFLAGS += -L$(WITH_OPENSSL)/lib
+	LDFLAGS += -L$(WITH_OPENSSL)
 else
 	DEPS += $(ODIR)/lib/libssl.a
 endif
