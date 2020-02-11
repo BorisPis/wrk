@@ -16,7 +16,7 @@
 #include "ae.h"
 #include "http_parser.h"
 
-#define RECVBUF  8192
+#define RECVBUF  65536
 
 #define MAX_THREAD_RATE_S   10000000
 #define SOCKET_TIMEOUT_MS   2000
@@ -36,6 +36,10 @@ typedef struct {
     lua_State *L;
     errors errors;
     struct connection *cs;
+    pthread_mutex_t *lock;
+    bool *ready;
+    int  num_threads;
+    int  index;
 } thread;
 
 typedef struct {

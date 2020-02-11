@@ -92,6 +92,10 @@ int main(int argc, char **argv) {
     statistics.requests = stats_alloc(MAX_THREAD_RATE_S);
     thread *threads     = zcalloc(cfg.threads * sizeof(thread));
 
+    pthread_mutex_t mutex;
+    pthread_mutex_init(&mutex, NULL);
+    bool *ready = zcalloc(cfg.threads * sizeof(bool));
+
     lua_State *L = script_create(cfg.script, url, headers);
     if (!script_resolve(L, host, service)) {
         char *msg = strerror(errno);
@@ -105,6 +109,10 @@ int main(int argc, char **argv) {
         thread *t      = &threads[i];
         t->loop        = aeCreateEventLoop(10 + cfg.connections * 3);
         t->connections = cfg.connections / cfg.threads;
+	t->ready       = ready;
+        t->num_threads = cfg.threads;
+        t->index = i;
+        t->lock = &mutex;
 
         t->L = script_create(cfg.script, url, headers);
         script_init(L, t, argc - optind, &argv[optind]);
@@ -220,7 +228,21 @@ void *thread_main(void *arg) {
         c->delayed = cfg.delay;
         connect_socket(thread, c);
     }
-
+    
+    /* mark self ready */
+    pthread_mutex_lock(thread->lock);
+    thread->ready[thread->index] = true;
+    pthread_mutex_unlock(thread->lock);
+    printf("Ready %d/%d\n", thread->index, thread->num_threads);
+    /* wait for all to be ready */
+    bool all = false;
+    while (!all) {
+        all = true;
+        for (int i = 0; i < thread->num_threads; i++) {
+            all = all && thread->ready[i];
+        }
+    }
+    printf("Ready all\n");
     aeEventLoop *loop = thread->loop;
     aeCreateTimeEvent(loop, RECORD_INTERVAL_MS, record_rate, thread, NULL);
 
@@ -240,9 +262,6 @@ static int connect_socket(thread *thread, connection *c) {
 
     fd = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
 
-    flags = fcntl(fd, F_GETFL, 0);
-    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-
     if (connect(fd, addr->ai_addr, addr->ai_addrlen) == -1) {
         if (errno != EINPROGRESS) goto error;
     }
@@ -250,14 +269,39 @@ static int connect_socket(thread *thread, connection *c) {
     flags = 1;
     setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &flags, sizeof(flags));
 
+    /////////////////////////////////
+    c->parser.data = c;
+    c->fd = fd;
+    int status = sock.connect(c, cfg.host);
+    while (status) {
+        printf("ssl connect status %d\n", status);
+        if (status != 0) {
+            goto error;
+        }
+        printf("retry ssl connect\n");
+        status = sock.connect(c, cfg.host);
+    }
+
+    http_parser_init(&c->parser, HTTP_RESPONSE);
+    c->written = 0;
+
+    flags = fcntl(fd, F_GETFL, 0);
+    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+
+    aeCreateFileEvent(c->thread->loop, fd, AE_READABLE, socket_readable, c);
+    aeCreateFileEvent(c->thread->loop, fd, AE_WRITABLE, socket_writeable, c);
+    return fd;
+    /*
     flags = AE_READABLE | AE_WRITABLE;
     if (aeCreateFileEvent(loop, fd, flags, socket_connected, c) == AE_OK) {
         c->parser.data = c;
         c->fd = fd;
         return fd;
     }
+    */
 
   error:
+    printf("Error connecting!!!!!!!!!\n");
     thread->errors.connect++;
     close(fd);
     return -1;
