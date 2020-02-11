@@ -20,6 +20,7 @@ SSL_CTX *ssl_init() {
         SSL_CTX_set_verify_depth(ctx, 0);
         SSL_CTX_set_mode(ctx, SSL_MODE_AUTO_RETRY);
         SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_CLIENT);
+	SSL_CTX_set_options(ctx, SSL_OP_NO_ENCRYPT_THEN_MAC);
     }
 
     return ctx;
@@ -27,15 +28,18 @@ SSL_CTX *ssl_init() {
 
 status ssl_connect(connection *c, char *host) {
     int r;
+    //printf("ssl");
     SSL_set_fd(c->ssl, c->fd);
     SSL_set_tlsext_host_name(c->ssl, host);
     if ((r = SSL_connect(c->ssl)) != 1) {
         switch (SSL_get_error(c->ssl, r)) {
+            //printf("---error %d\n", errno);
             case SSL_ERROR_WANT_READ:  return RETRY;
             case SSL_ERROR_WANT_WRITE: return RETRY;
             default:                   return ERROR;
         }
     }
+    //printf("..OK\n");
     return OK;
 }
 
