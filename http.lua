@@ -1,8 +1,25 @@
 -- Resource: https://github.com/timotta/wrk-scripts/blob/master/multiplepaths.lua
 -- initialize the pseudo random number generator
 -- Resource: http://lua-users.org/wiki/MathLibraryTutorial
-math.randomseed(os.time())
+--math.randomseed(os.time())
+math.randomseed(0)
 math.random(); math.random(); math.random()
+
+tid = 0
+local g_counter = 1
+setup = function(thread)
+	thread:set("id", g_counter)
+	g_counter = g_counter + 1
+end
+
+function init(args)
+	requests  = 0
+	responses = 0
+
+	local msg = "thread %d created"
+	tid = id
+	print(msg:format(tid))
+end
 
 -- Shuffle array
 -- Returns a randomly shuffled array
@@ -46,7 +63,8 @@ end
 
 -- Load URL paths from file
 --paths = load_url_paths_from_file("urls.txt")
-MAX_PATHS=630000
+MAX_PATHS=360000
+THREADS=16
 
 -- Check if at least one path was found in the file
 --if #paths <= 0 then
@@ -62,14 +80,17 @@ counter = 0
 request = function()
 	-- Get the next paths array element
 	--url_path = paths[counter]
-	url_path = string.format("http://10.1.4.100/file.%d.html", math.random(MAX_PATHS))
+	--url_path = string.format("http://10.1.4.100/file.%d.html", math.random(MAX_PATHS))
+	url_path = string.format("http://10.1.4.100/file.%d.html", counter * THREADS + tid)
+	--print("Requesting thread " .. tid )
 
 	-- 
 	counter = counter + 1
 
+
 	-- If the counter is longer than the paths array length then reset it
 	--if counter > #paths then
-	if counter > MAX_PATHS then
+	if counter > (MAX_PATHS / THREADS - 1) then
 		counter = 0
 	end
 
