@@ -1,5 +1,6 @@
 CFLAGS  += -std=c99 -Wall -O2 -D_REENTRANT
-LIBS    := -lm -lssl -lcrypto -lpthread
+#-lssl -lcrypto 
+LIBS    := -lm -lpthread
 
 TARGET  := $(shell uname -s | tr '[A-Z]' '[a-z]' 2>/dev/null || echo unknown)
 
@@ -25,7 +26,7 @@ VER  ?= $(shell git describe --tags --always --dirty)
 
 ODIR := obj
 OBJ  := $(patsubst %.c,$(ODIR)/%.o,$(SRC)) $(ODIR)/bytecode.o $(ODIR)/version.o
-LIBS := -lluajit-5.1 $(LIBS)
+LIBS := -lssl -lcrypto -lluajit-5.1 $(LIBS)
 
 DEPS    :=
 CFLAGS  += -I$(ODIR)/include
@@ -40,8 +41,10 @@ else
 endif
 
 ifneq ($(WITH_OPENSSL),)
-	CFLAGS  += -I$(WITH_OPENSSL)/include
-	LDFLAGS += -L$(WITH_OPENSSL)/lib
+	CFLAGS  += -I$(WITH_OPENSSL)/.openssl/include
+	LDFLAGS += -L$(WITH_OPENSSL)/.openssl/lib
+	#LIBS    += -lssl -lcrypto -lpthread 
+	DEPS    += $(WITH_OPENSSL)/.openssl/lib/libssl.a $(WITH_OPENSSL)/.openssl/lib/libcrypto.a
 else
 	DEPS += $(ODIR)/lib/libssl.a
 endif
@@ -76,7 +79,7 @@ $(ODIR)/%.o : %.c
 LUAJIT  := $(notdir $(patsubst %.tar.gz,%,$(wildcard deps/LuaJIT*.tar.gz)))
 OPENSSL := $(notdir $(patsubst %.tar.gz,%,$(wildcard deps/openssl*.tar.gz)))
 
-OPENSSL_OPTS = no-shared no-psk no-srp no-dtls no-idea --prefix=$(abspath $(ODIR))
+OPENSSL_OPTS = enable-ktls enable-threads no-shared no-psk no-srp no-dtls no-idea --prefix=$(abspath $(ODIR))
 
 $(ODIR)/$(LUAJIT):  deps/$(LUAJIT).tar.gz  | $(ODIR)
 	@tar -C $(ODIR) -xf $<
