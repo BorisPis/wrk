@@ -64,8 +64,11 @@ end
 -- Load URL paths from file
 --paths = load_url_paths_from_file("urls.txt")
 FSIZE=262144
-MAX_PATHS=8589934592/FSIZE - 1
+--MAX_PATHS=8589934592/FSIZE - 1
+MAX_PATHS=2147483648/FSIZE - 1
 THREADS=16
+--IPADDR="10.1.4.100"
+IPADDR=os.getenv("dip1")
 
 -- Check if at least one path was found in the file
 --if #paths <= 0 then
@@ -83,7 +86,7 @@ request = function()
 	--url_path = paths[counter]
 	--url_path = string.format("http://10.1.4.100/file.%d.html", math.random(MAX_PATHS))
 	--http://10.1.4.100/nginx.4096/file.0.html
-	url_path = string.format("http://10.1.4.100/nginx.%d/file.%d.html", FSIZE, counter * THREADS + tid)
+	url_path = string.format("http://%s/nginx.%d/file.%d.html", IPADDR, FSIZE, counter * THREADS + tid)
 	--print("Requesting thread " .. tid )
 
 	-- 
