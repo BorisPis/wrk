@@ -41,10 +41,10 @@ else
 endif
 
 ifneq ($(WITH_OPENSSL),)
-	CFLAGS  += -I$(WITH_OPENSSL)/.openssl/include
-	LDFLAGS += -L$(WITH_OPENSSL)/.openssl/lib
+	CFLAGS  += -I$(WITH_OPENSSL)/include
+	LDFLAGS += -L$(WITH_OPENSSL)
 	#LIBS    += -lssl -lcrypto -lpthread 
-	DEPS    += $(WITH_OPENSSL)/.openssl/lib/libssl.a $(WITH_OPENSSL)/.openssl/lib/libcrypto.a
+	DEPS    += $(WITH_OPENSSL)/libssl.a $(WITH_OPENSSL)/libcrypto.a
 else
 	DEPS += $(ODIR)/lib/libssl.a
 endif
@@ -79,7 +79,7 @@ $(ODIR)/%.o : %.c
 LUAJIT  := $(notdir $(patsubst %.tar.gz,%,$(wildcard deps/LuaJIT*.tar.gz)))
 OPENSSL := $(notdir $(patsubst %.tar.gz,%,$(wildcard deps/openssl*.tar.gz)))
 
-OPENSSL_OPTS = enable-ktls enable-threads no-shared no-psk no-srp no-dtls no-idea --prefix=$(abspath $(ODIR))
+OPENSSL_OPTS = no-shared no-psk no-srp no-dtls no-idea --prefix=$(abspath $(ODIR))
 
 $(ODIR)/$(LUAJIT):  deps/$(LUAJIT).tar.gz  | $(ODIR)
 	@tar -C $(ODIR) -xf $<
